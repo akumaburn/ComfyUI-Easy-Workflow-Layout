@@ -199,6 +199,37 @@ async function masterLayout() {
 			const colOf = {};
 			cols.forEach((c, ci) => c.nodes.forEach((id) => (colOf[id] = ci)));
 
+			// --- consolidate columns: merge simple chains into a single column ---
+			// When node B in column C+1 has exactly one predecessor A in column C,
+			// move B to A's column and stack vertically. This reduces horizontal
+			// spreading for linear chains regardless of whether A has other branches.
+			for (let ci = cols.length - 1; ci > 0; ci--) {
+				const curCol = cols[ci];
+				const prevCol = cols[ci - 1];
+				const toMove = [];
+				for (const id of curCol.nodes) {
+					if (isReroute[id]) continue;
+					const preds = tpreds[id] || [];
+					if (preds.length !== 1) continue;
+					const pred = preds[0];
+					if (colOf[pred] !== ci - 1) continue;
+					toMove.push(id);
+				}
+				for (const id of toMove) {
+					const pred = (tpreds[id] || [])[0];
+					X[id] = X[pred] || 0;
+					colOf[id] = ci - 1;
+					curCol.nodes = curCol.nodes.filter(n => n !== id);
+					prevCol.nodes.push(id);
+				}
+				if (curCol.nodes.length === 0) {
+					cols.splice(ci, 1);
+					for (let j = ci; j < cols.length; j++) {
+						for (const n of cols[j].nodes) colOf[n] = j;
+					}
+				}
+			}
+
 			// --- lane families: same-type nodes that each occupy their own column ---
 			const famMembers = new Map();
 			for (const id of ids) {
@@ -289,14 +320,9 @@ async function masterLayout() {
 				for (const m of mem) mark(m, y);
 			};
 
-			// previews pinned to a shared top lane
-			if (previewFam) {
-				for (const m of [...famMembers.get(previewFam)].sort((a, b) => X[a] - X[b])) mark(m, 0);
-			}
-
 			const famPlaced = new Set();
 			const colBottom = {};
-			let pending = ids.filter((id) => !isReroute[id] && types[id] !== previewFam);
+			let pending = ids.filter((id) => !isReroute[id]);
 			pending.sort((a, b) => (colOf[a] - colOf[b]) || ((layoutById.get(a).y || 0) - (layoutById.get(b).y || 0)));
 
 			for (let sweep = 0; sweep < 8; sweep++) {
@@ -357,6 +383,41 @@ async function masterLayout() {
 				if (!ref.length) for (const p of rpreds[id]) if (Y.has(p)) ref.push(Y.get(p) + sizes[p][1] / 2);
 				const d = ref.length ? ref.reduce((s, v) => s + v, 0) / ref.length - sizes[id][1] / 2 : 0;
 				mark(id, resolveSingle(id, d));
+			}
+
+			// reposition previews above their source nodes
+			if (previewFam) {
+				const mem = famMembers.get(previewFam);
+				const memSet = new Set(mem);
+				for (const m of mem) {
+					const idx = placed.findIndex(p => p.id === m);
+					if (idx >= 0) placed.splice(idx, 1);
+					Y.delete(m);
+				}
+				const sourceTops = [];
+				for (const m of mem) {
+					for (const u of tpreds[m].concat(tsuccs[m])) {
+						if (Y.has(u) && !memSet.has(u)) sourceTops.push(Y.get(u));
+					}
+				}
+				if (sourceTops.length) {
+					const maxh = Math.max(...mem.map((m) => sizes[m][1]));
+					let baseY = Math.min(...sourceTops) - maxh - 50;
+					if (baseY < 0) baseY = 0;
+					let y = baseY;
+					for (let k = 0; k < 1000; k++) {
+						let hit = null;
+						for (const m of mem) {
+							const b = blockerAt(m, y);
+							if (b) { hit = b; break; }
+						}
+						if (!hit) break;
+						y = hit.y1 + GAP;
+					}
+					for (const m of mem) mark(m, y);
+				} else {
+					for (const m of mem) mark(m, 0);
+				}
 			}
 
 			// --- apply positions ---
