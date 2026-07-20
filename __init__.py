@@ -1,17 +1,14 @@
 # -*- coding: utf-8 -*-
 
 """
-@author: PTA
-@title: auto nodes layout
-@nickname: auto nodes layout
-@description: a ComfyUI extension to apply better nodes layout algorithm to ComfyUI workflow (mostly for visualization purpose)
+@author: aeslampanah
+@title: Easy Workflow Layout
+@nickname: Easy Workflow Layout
+@description: a ComfyUI extension to organize workflow nodes into a clean, flowchart-like layout with same-type nodes aligned and connected nodes flowing left-to-right
 """
-
-# this file is the entry point so ComfyUI can detect as extension/custom node
-# for more specifications see https://github.com/ltdrdata/ComfyUI-Manager
 
 NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}
-WEB_DIRECTORY = "./web" # so ComfyUI can use custom CSS/JS
+WEB_DIRECTORY = "./web"
 
 __all__ = ["WEB_DIRECTORY"]

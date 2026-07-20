@@ -1,6 +1,6 @@
-# ComfyUI auto nodes layout
+# Easy Workflow Layout
 
-a ComfyUI extension that applies an improved node layout algorithm to ComfyUI workflows, primarily for better visualization
+a ComfyUI extension to organize workflow nodes into a clean, flowchart-like layout with same-type nodes aligned and connected nodes flowing left-to-right
 
 this serves as a working prototype of the proof-of-concept detailed in Comfy-Org/ComfyUI#1547
 
@@ -14,15 +14,7 @@ given my limited understanding, it appears most (if not all) ComfyUI workflows c
 
 **credit**: this approach was inspired by this [comment](https://github.com/jagenjo/litegraph.js/issues/9#issuecomment-376413726)
 
-**disclaimer**: this reflects a personal preference, and it often produces larger graphs
-
-> [!IMPORTANT]
-> it’s recommended to remove ‘ReRoute’ nodes from your ComfyUI workflows prior to applying the layout
-
-Here’s why:
-- Directed acyclic graphs, like ComfyUI workflows, are typically structured with clear start and end nodes. Layout algorithms for such graphs operate by assigning a ‘column’ or ‘rank’ to each node, creating a layered visual hierarchy.
-- ‘ReRoute’ nodes disrupt this column assignment. Their presence can lead to misaligned nodes and a less intuitive, harder-to-read layout.
-- You can re-introduce ‘ReRoute’ nodes after the layout has been applied. This allows you to manage any wires that might be intercepted or partially obscured by other nodes in the newly optimized arrangement.
+**disclaimer**: this reflects a personal preference
 
 It’s worth noting that since ComfyUI workflows are inherently oriented from left to right, the concept of ‘depth’ is more accurately described as a ‘column’ or ‘rank’ within this hierarchical context.
 
@@ -34,30 +26,36 @@ It’s worth noting that since ComfyUI workflows are inherently oriented from le
 **Installation**: via ComfyUI Manager for ease of use, or clone this repository manually using `git` if you’re developing (no additional requirements needed)
 
 **Using**:
-1. Finalize your workflow, then remove any Reroute nodes from your graph (you can add them back afterward if needed)
-2. Access the layout options by either:
-   - Right-clicking on the canvas, or
-   - Navigating to the top menu bar: Extensions > 📍 auto nodes layout
-3. Choose your preferred layout algorithm from the available options
-4. Customize the spacing between columns and nodes by adjusting the settings in ComfyUI settings
+1. Finalize your workflow (Reroute nodes are fine — they're grouped into a compact column automatically)
+2. Access the layout by either:
+   - Right-clicking on the canvas → **Layout Workflow**, or
+   - Navigating to the top menu bar: **Extensions > Easy Workflow Layout > Layout Workflow**
+3. Customize the spacing between columns and nodes by adjusting the settings in ComfyUI settings
 
 ## implementation details
 
-the principle is to use an external library to compute all nodes position, then retrieve back to `LiteGraph.js`
+the principle is to use ELK (Eclipse Layout Kernel) to compute pipeline stages (the left-to-right column structure), then post-process to assign clean, overlap-free rows that match how well-organized workflows are arranged by hand
 
 requirements: ComfyUI version ≥ 0.12.3
 
-implemented algorithms:
-- Dagre layout from https://github.com/dagrejs/dagre
-- ELK ‘layered’ layout from https://github.com/kieler/elkjs
+implemented algorithm (**Layout Workflow**):
+1. **ELK ‘layered’ layout** computes the column (pipeline stage) for every node — ELK's X placement already pulls inputs near their consumers, matching manual arrangement
+2. **Sinks are re-anchored** just right of whatever produces them (instead of all being dumped in the last column), so e.g. every `PreviewImage` sits right after its stage
+3. **Same-type lanes**: multi-instance types that each occupy their own column (chained like `FaceDetailer`, or siblings like `UltralyticsDetectorProvider`) are snapped to a shared horizontal lane, placed as a rigid group so they stay aligned
+4. **Remaining nodes** are placed near their connected neighbors, then nudged up/down until nothing overlaps (node dimensions are fully accounted for — no overlaps, guaranteed)
+5. **Reroute nodes** are gathered into a compact vertical column at their fan-out point instead of being scattered by the layout engine
 
 2 options to control layout density:
-- horizontal spacing between columns
-- vertical spacing between nodes in same column
+- horizontal spacing between columns (`ranksep`)
+- vertical spacing between nodes in same column (`nodesep`)
+
+why alignment matters:
+- `PreviewImage`, `FaceDetailer`, `UltralyticsDetectorProvider` and other multi-instance types get snapped to the same Y row instead of being scattered vertically
+- nodes of the same type that share an X column (like multiple inputs) get stacked vertically
+- the overall height stays compact (close to a hand-organized layout)
 
 **TODO**
 - [ ] apply layout to only a subset of nodes instead of whole graph
-- [ ] webcola layout: experimental, still exploring optimal settings
 - [ ] find more layout algorithm, in JS preferably
 
 ## example
@@ -73,10 +71,7 @@ remove groups because nodes gonna be placed very differently
 - `LiteGraph.js` default auto-arrange:
 ![Imgur](https://i.imgur.com/3hTAdDU.png)
 
-- `Dagre.js` layout:
-![Imgur](https://i.imgur.com/19TVkpT.png)
-
-- `ELK.js` ‘layered’ layout:
+- `Master layout` (ELK-based):
 ![Imgur](https://i.imgur.com/yNztWil.png)
 
 ## extra

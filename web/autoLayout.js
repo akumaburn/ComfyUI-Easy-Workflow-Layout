@@ -1,215 +1,87 @@
 // docs: https://docs.comfy.org/custom-nodes/js/javascript_overview
 
-import { app } from "/scripts/app.js"; // the Comfy application running in the browser
-import "./dagre.min.js"; // copied from https://cdn.jsdelivr.net/npm/dagre/dist/dagre.min.js
-import "./elk.bundled.min.js"; // copied from https://cdn.jsdelivr.net/npm/elkjs/lib/elk.bundled.min.js
-// import "./cola.min.js"; // copied from https://cdn.jsdelivr.net/npm/webcola/WebCola/cola.min.js
+import { app } from "/scripts/app.js";
+import "./elk.bundled.min.js";
 
-// i failed to do named import with those libraries
-// dagre & ELK are now available in `window` object
+const ext_id = "EWL";
+const ext_label = "Easy Workflow Layout";
 
-///////////////////////////////////////////////////////////////////////////////
-// define some objects to avoid making a big messy object with `app.registerExtension`
-
-const autonodes_id = "PTA.autoNodesLayout"; // prefix for all settings, commands, and menu items to avoid naming conflicts
-const autonodes_label = "📍 auto nodes layout"; // shown in menus & settings
-
-
-// shown in comfyui settings
-const autonodes_settings = [
+const ext_settings = [
 	{
-		"id": `${autonodes_id}.ranksep`,
-		"category": [autonodes_label, "common settings", "ranksep"],
+		"id": `${ext_id}.ranksep`,
+		"category": [ext_label, "spacing", "ranksep"],
 		"name": "horizontal spacing (px) between columns",
 		"type": "number",
 		"defaultValue": 200,
 	},
 	{
-		"id": `${autonodes_id}.nodesep`,
-		"category": [autonodes_label, "common settings", "nodesep"],
+		"id": `${ext_id}.nodesep`,
+		"category": [ext_label, "spacing", "nodesep"],
 		"name": "vertical spacing (px) between nodes in same column",
 		"type": "number",
 		"defaultValue": 150,
 	},
-	{
-		"id": `${autonodes_id}.dagre.ranker`,
-		"category": [autonodes_label, "Dagre.js layout settings", "ranker"],
-		"name": "algorithm to assigns a rank to each node in the input graph",
-		"type": "combo",
-		"defaultValue": "network-simplex",
-		"options": ["network-simplex", "tight-tree", "longest-path"],
-		"attrs": {
-			"editable": false,
-			"filter": false,
-		},
-		"tooltip": "refer to Dagre.js docs for details",
-	},
-	{
-		"id": `${autonodes_id}.elk.layering`,
-		"category": [autonodes_label, "ELK.js ‘layered’ layout settings", "layering"],
-		"name": "layering strategy",
-		"type": "combo",
-		"defaultValue": "NETWORK_SIMPLEX",
-		"options": ["NETWORK_SIMPLEX", "LONGEST_PATH", "LONGEST_PATH_SOURCE", "COFFMAN_GRAHAM"],
-		"attrs": {
-			"editable": false,
-			"filter": false,
-		},
-		"tooltip": "refer to ELK.js docs for details",
-	},
-	{
-		"id": `${autonodes_id}.elk.nodePlacement`,
-		"category": [autonodes_label, "ELK.js ‘layered’ layout settings", "nodePlacement"],
-		"name": "node placement strategy",
-		"type": "combo",
-		"defaultValue": "BRANDES_KOEPF",
-		"options": ["SIMPLE", "NETWORK_SIMPLEX", "BRANDES_KOEPF", "LINEAR_SEGMENTS"],
-		"attrs": {
-			"editable": false,
-			"filter": false,
-		},
-		"tooltip": "refer to ELK.js docs for details",
-	},
 ];
-// show in comfyui right-click menu in canvas
-const autonodes_rightclickmenu = {
-	"content": autonodes_label,
-	"has_submenu": true,
-	"submenu": {
-		"options": [
-			{
-				"content": "LiteGraph.js default layout",
-				"callback": () => (app.canvas.graph || app.graph).arrange()
-			},
-			{
-				"content": "Dagre.js layout",
-				"callback": dagreLayout // see definition below
-			},
-			{
-				"content": "ELK.js ‘layered’ layout",
-				"callback": elkLayeredLayout // see definition below
-			},
-		],
-	},
-};
-// show in comfyui top-bar menu
-const autonodes_topbarcommands = [
+
+const ext_commands = [
 	{
-		"id": `${autonodes_id}.default`,
-		"label": "LiteGraph.js default layout",
-		"function": () => (app.canvas.graph || app.graph).arrange()
-	},
-	{
-		"id": `${autonodes_id}.dagre`,
-		"label": "Dagre.js layout",
-		"function": dagreLayout // see definition below
-	},
-	{
-		"id": `${autonodes_id}.elk`,
-		"label": "ELK.js ‘layered’ layout",
-		"function": elkLayeredLayout // see definition below
-	},
-];
-const autonodes_topbarmenu = [
-	{
-		path: ["Extensions", autonodes_label],
-		commands: [`${autonodes_id}.default`, `${autonodes_id}.dagre`, `${autonodes_id}.elk`]
+		"id": `${ext_id}.layout`,
+		"label": "Layout Workflow",
+		"function": masterLayout
 	},
 ];
 
+const ext_topbarmenu = [
+	{
+		path: ["Extensions", ext_label],
+		commands: [`${ext_id}.layout`]
+	},
+];
 
 app.registerExtension({
-	"name": autonodes_id,
+	"name": ext_id,
 	"aboutPageBadges": [
 		{
 			"label": "GitHub",
-			"url": "https://github.com/phineas-pta/comfyui-auto-nodes-layout",
+			"url": "https://github.com/aeslampanah/ComfyUI-Easy-Workflow-Layout",
 			"icon": "pi pi-github"
 		}
 	],
-	"commands": autonodes_topbarcommands,
-	"menuCommands": autonodes_topbarmenu,
-	"settings": autonodes_settings,
-	getCanvasMenuItems(canvas) { // add to right-click menu
-		return [null, autonodes_rightclickmenu]; // null creates visual separator
+	"commands": ext_commands,
+	"menuCommands": ext_topbarmenu,
+	"settings": ext_settings,
+	getCanvasMenuItems(canvas) {
+		return [null, { content: "Layout Workflow", callback: masterLayout }];
 	},
 });
 
-///////////////////////////////////////////////////////////////////////////////
+const REROUTE_SIZE = 20;
+const COLGAP = 150;   // gap between a sink and its source column
+const COL_TOL = 150;  // x tolerance for grouping nodes into columns
+const GAP = 4;        // minimum gap used when resolving overlaps
 
-/**
- * arrange nodes using Dagre layout
- * @see https://github.com/dagrejs/dagre
- * @see https://github.com/dagrejs/dagre/wiki
- * @returns {undefined} Nothing is returned.
- */
-async function dagreLayout() {
-	const activeGraph = app.canvas.graph || app.graph;
-	popupInput(activeGraph); // see definition below
-
-	// setup dagre
-	const daG = new window.dagre.graphlib
-		.Graph({ "compound": false })
-		.setGraph({
-			"rankdir": "LR", // left to right
-			"ranker": app.extensionManager.setting.get(`${autonodes_id}.dagre.ranker`),
-			"ranksep": app.extensionManager.setting.get(`${autonodes_id}.ranksep`),
-			"nodesep": app.extensionManager.setting.get(`${autonodes_id}.nodesep`),
-		})
-		.setDefaultNodeLabel(() => ({}))
-		.setDefaultEdgeLabel(() => ({}));
-
-	// convert litegraph to dagre
-	activeGraph._nodes.forEach((n) => daG.setNode(
-		n.id.toString(),
-		{
-			"width": n.size[0],
-			"height": n.size[1],
-		}
-	));
-	activeGraph.links.forEach((e) => daG.setEdge(
-		e.origin_id.toString(),
-		e.target_id.toString()
-	));
-
-	// apply layout algorithm
-	window.dagre.layout(daG);
-
-	// retrieve nodes position
-	for (const n of activeGraph._nodes) {
-		const nodeLaidOut = daG.node(n.id.toString());
-		n.pos[0] = nodeLaidOut.x;
-		n.pos[1] = nodeLaidOut.y;
-	}
-
-	activeGraph.setDirtyCanvas(true, true); // refresh after applying the layout
-	return;
+function median(arr) {
+	if (!arr.length) return null;
+	const a = [...arr].sort((x, y) => x - y);
+	return a[Math.floor(a.length / 2)];
 }
 
-
-/**
- * arrange nodes using ELK ‘layered’ layout
- * @see https://github.com/kieler/elkjs
- * @see https://eclipse.dev/elk/reference/algorithms/org-eclipse-elk-layered.html
- * @returns {undefined} Nothing is returned.
- */
-async function elkLayeredLayout() {
+async function masterLayout() {
 	const activeGraph = app.canvas.graph || app.graph;
-	popupInput(activeGraph); // see definition below
 
-	// convert litegraph to elk
+	const nodesep = app.extensionManager.setting.get(`${ext_id}.nodesep`);
+
 	const myElkNodes = activeGraph._nodes.map((n) => ({
 		"id": n.id,
-		"width": n.size[0],
-		"height": n.size[1],
+		"width": n.type === "Reroute" ? REROUTE_SIZE : (n.size[0] || 100),
+		"height": n.type === "Reroute" ? REROUTE_SIZE : (n.size[1] || 50),
 	}));
 	const myElkEdges = [...activeGraph.links.values()].filter(Boolean).map((e) => ({
 		"id": e.id,
-		"sources": [ e.origin_id ],
-		"targets": [ e.target_id ],
+		"sources": [e.origin_id],
+		"targets": [e.target_id],
 	}));
 
-	// setup ELK
 	const myElkGraph = {
 		"id": "root",
 		"children": myElkNodes,
@@ -217,96 +89,285 @@ async function elkLayeredLayout() {
 		"layoutOptions": {
 			"elk.algorithm": "layered",
 			"elk.direction": "RIGHT",
-			"elk.layered.layering.strategy": app.extensionManager.setting.get(`${autonodes_id}.elk.layering`),
-			"elk.layered.nodePlacement.strategy": app.extensionManager.setting.get(`${autonodes_id}.elk.nodePlacement`),
-			"elk.layered.spacing.nodeNodeBetweenLayers": app.extensionManager.setting.get(`${autonodes_id}.ranksep`),
-			"elk.spacing.nodeNode": app.extensionManager.setting.get(`${autonodes_id}.nodesep`),
+			"elk.layered.layering.strategy": "LONGEST_PATH",
+			"elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
+			"elk.layered.considerModelOrder": "NODES_AND_EDGES",
+			"elk.layered.spacing.nodeNodeBetweenLayers": app.extensionManager.setting.get(`${ext_id}.ranksep`),
+			"elk.spacing.nodeNode": nodesep,
 		},
 	};
 
-	// apply layout algorithm
-	const elk = new window.ELK()
+	return new window.ELK()
 		.layout(myElkGraph)
 		.then((val) => {
-			// retrieve nodes position
-			for (const nodeLaidOut of val.children) {
-				const n = activeGraph.getNodeById(nodeLaidOut.id);
-				n.pos[0] = nodeLaidOut.x;
-				n.pos[1] = nodeLaidOut.y;
+			const layoutById = new Map(val.children.map((c) => [c.id, c]));
+			const nodeById = new Map(activeGraph._nodes.map((n) => [n.id, n]));
+
+			const ids = activeGraph._nodes.map((n) => n.id);
+			const types = {};
+			const sizes = {};
+			for (const n of activeGraph._nodes) {
+				types[n.id] = n.type;
+				sizes[n.id] = [n.size[0] || 100, n.size[1] || 50];
 			}
 
-			// refresh after applying the layout
+			// --- raw graph ---
+			const rawPreds = new Map(ids.map((i) => [i, []]));
+			const rawSuccs = new Map(ids.map((i) => [i, []]));
+			for (const e of myElkEdges) {
+				const s = e.sources[0], t = e.targets[0];
+				if (!rawSuccs.has(s) || !rawPreds.has(t)) continue;
+				rawSuccs.get(s).push(t);
+				rawPreds.get(t).push(s);
+			}
+
+			const isReroute = {};
+			const isSink = {};
+			for (const id of ids) {
+				isReroute[id] = types[id] === "Reroute";
+				isSink[id] = rawSuccs.get(id).length === 0;
+			}
+
+			// --- transparent neighbors (follow through reroutes to real nodes) ---
+			const expand = (seed, fwd) => {
+				const out = new Set();
+				const stack = [...seed];
+				while (stack.length) {
+					const u = stack.pop();
+					if (isReroute[u]) stack.push(...fwd.get(u));
+					else out.add(u);
+				}
+				return [...out];
+			};
+			const tpreds = {}, tsuccs = {}, rpreds = {}, rsuccs = {};
+			for (const id of ids) {
+				if (isReroute[id]) {
+					rpreds[id] = expand(rawPreds.get(id), rawPreds);
+					rsuccs[id] = expand(rawSuccs.get(id), rawSuccs);
+				} else {
+					tpreds[id] = expand(rawPreds.get(id), rawPreds);
+					tsuccs[id] = expand(rawSuccs.get(id), rawSuccs);
+				}
+			}
+
+			// --- X targets ---
+			const X = {};
+			for (const id of ids) {
+				if (isReroute[id]) continue;
+				if (isSink[id] && rawPreds.get(id).length) {
+					let right = -Infinity;
+					for (const s of rawPreds.get(id)) {
+						const l = layoutById.get(s);
+						right = Math.max(right, (l ? l.x : 0) + (l ? l.width : sizes[s][0]));
+					}
+					X[id] = right + COLGAP;
+				} else {
+					X[id] = layoutById.get(id) ? layoutById.get(id).x : 0;
+				}
+			}
+			for (const id of ids) {
+				if (!isReroute[id]) continue;
+				const [w] = sizes[id];
+				let rx;
+				if (rsuccs[id].length) {
+					let tl = Infinity;
+					for (const t of rsuccs[id]) tl = Math.min(tl, X[t] !== undefined ? X[t] : 0);
+					rx = tl - w - 80;
+				} else {
+					rx = layoutById.get(id) ? layoutById.get(id).x : 0;
+				}
+				if (rpreds[id].length) {
+					let sr = -Infinity;
+					for (const s of rpreds[id]) sr = Math.max(sr, (X[s] !== undefined ? X[s] : 0) + sizes[s][0]);
+					rx = Math.max(rx, sr + 60);
+				}
+				X[id] = rx;
+			}
+
+			// --- columns ---
+			const cols = [];
+			for (const id of [...ids].sort((a, b) => X[a] - X[b])) {
+				const last = cols[cols.length - 1];
+				if (last && X[id] - last.maxx <= COL_TOL) {
+					last.nodes.push(id);
+					last.maxx = Math.max(last.maxx, X[id]);
+				} else {
+					cols.push({ maxx: X[id], nodes: [id] });
+				}
+			}
+			for (const c of cols) c.nodes.sort((a, b) => (layoutById.get(a).y || 0) - (layoutById.get(b).y || 0));
+			const colOf = {};
+			cols.forEach((c, ci) => c.nodes.forEach((id) => (colOf[id] = ci)));
+
+			// --- lane families: same-type nodes that each occupy their own column ---
+			const famMembers = new Map();
+			for (const id of ids) {
+				if (isReroute[id]) continue;
+				if (!famMembers.has(types[id])) famMembers.set(types[id], []);
+				famMembers.get(types[id]).push(id);
+			}
+			const laneFams = new Set();
+			for (const [fam, mem] of famMembers) {
+				if (mem.length < 2) continue;
+				const mcols = new Set(mem.map((m) => colOf[m]));
+				if (mcols.size < 2 || mcols.size !== mem.length) continue;
+				const memSet = new Set(mem);
+				const chained = mem.some((m) => tsuccs[m].concat(tpreds[m]).some((u) => memSet.has(u)));
+				const nbfams = new Set();
+				for (const m of mem) {
+					for (const u of tsuccs[m].concat(tpreds[m])) {
+						if (!memSet.has(u)) nbfams.add(types[u]);
+					}
+				}
+				if (chained || nbfams.size === 1) laneFams.add(fam);
+			}
+			let previewFam = null;
+			for (const [fam, mem] of famMembers) {
+				if (mem.every((m) => isSink[m]) && fam.toLowerCase().startsWith("preview")) {
+					previewFam = fam;
+					laneFams.add(fam);
+				}
+			}
+
+			// spread X within a lane family so members never overlap horizontally
+			for (const fam of laneFams) {
+				let cx = null;
+				for (const id of [...famMembers.get(fam)].sort((a, b) => X[a] - X[b])) {
+					const [w] = sizes[id];
+					if (cx !== null && X[id] < cx) X[id] = cx;
+					cx = X[id] + w + 60;
+				}
+			}
+
+			// --- Y placement ---
+			const Y = new Map();
+			const placed = []; // {x0,y0,x1,y1,id}
+
+			const blockerAt = (id, y) => {
+				const [w, h] = sizes[id];
+				const x0 = X[id], x1 = x0 + w;
+				for (const p of placed) {
+					if (x0 < p.x1 && p.x0 < x1 && y < p.y1 && p.y0 < y + h) return p;
+				}
+				return null;
+			};
+			const resolveSingle = (id, desired) => {
+				const [, h] = sizes[id];
+				let y = desired;
+				for (let k = 0; k < 800; k++) {
+					const b = blockerAt(id, y);
+					if (!b) break;
+					y = b.y1 + GAP;
+				}
+				const down = y;
+				y = desired;
+				for (let k = 0; k < 800; k++) {
+					const b = blockerAt(id, y);
+					if (!b) break;
+					y = b.y0 - h - GAP;
+				}
+				const up = y;
+				return Math.abs(down - desired) <= Math.abs(desired - up) ? down : up;
+			};
+			const mark = (id, y) => {
+				Y.set(id, y);
+				const [w, h] = sizes[id];
+				placed.push({ x0: X[id], y0: y, x1: X[id] + w, y1: y + h, id });
+			};
+			const placeFamily = (fam, baseY) => {
+				const mem = famMembers.get(fam);
+				let y = baseY;
+				for (let k = 0; k < 1000; k++) {
+					let hit = null;
+					for (const m of mem) {
+						const b = blockerAt(m, y);
+						if (b) { hit = b; break; }
+					}
+					if (!hit) break;
+					y = hit.y1 + GAP;
+				}
+				for (const m of mem) mark(m, y);
+			};
+
+			// previews pinned to a shared top lane
+			if (previewFam) {
+				for (const m of [...famMembers.get(previewFam)].sort((a, b) => X[a] - X[b])) mark(m, 0);
+			}
+
+			const famPlaced = new Set();
+			const colBottom = {};
+			let pending = ids.filter((id) => !isReroute[id] && types[id] !== previewFam);
+			pending.sort((a, b) => (colOf[a] - colOf[b]) || ((layoutById.get(a).y || 0) - (layoutById.get(b).y || 0)));
+
+			for (let sweep = 0; sweep < 8; sweep++) {
+				if (!pending.length) break;
+				const still = [];
+				for (const id of pending) {
+					const fam = types[id];
+					if (laneFams.has(fam)) {
+						if (famPlaced.has(fam)) continue;
+						const mem = famMembers.get(fam);
+						const memSet = new Set(mem);
+						const cents = [];
+						for (const m of mem) {
+							for (const u of tpreds[m].concat(tsuccs[m])) {
+								if (Y.has(u) && !memSet.has(u)) cents.push(Y.get(u) + sizes[u][1] / 2);
+							}
+						}
+						let baseY;
+						if (!cents.length) {
+							if (sweep < 3) { still.push(id); continue; }
+							baseY = 0;
+						} else {
+							const maxh = Math.max(...mem.map((m) => sizes[m][1]));
+							baseY = median(cents) - maxh / 2;
+						}
+						placeFamily(fam, baseY);
+						famPlaced.add(fam);
+						for (const m of mem) {
+							const cb = colBottom[colOf[m]];
+							colBottom[colOf[m]] = cb === undefined ? Y.get(m) + sizes[m][1] : Math.max(cb, Y.get(m) + sizes[m][1]);
+						}
+						continue;
+					}
+					// non-lane node: place near placed neighbors
+					const cents = [];
+					for (const u of tpreds[id].concat(tsuccs[id])) {
+						if (Y.has(u)) cents.push(Y.get(u) + sizes[u][1] / 2);
+					}
+					let desired;
+					if (cents.length) desired = median(cents) - sizes[id][1] / 2;
+					else if (colBottom[colOf[id]] !== undefined) desired = colBottom[colOf[id]] + nodesep;
+					else if (sweep < 3) { still.push(id); continue; }
+					else desired = 0;
+					const y = resolveSingle(id, desired);
+					mark(id, y);
+					const cb = colBottom[colOf[id]];
+					colBottom[colOf[id]] = cb === undefined ? y + sizes[id][1] : Math.max(cb, y + sizes[id][1]);
+				}
+				pending = still;
+			}
+
+			// reroutes last: compact column at their targets' height
+			const rerouteIds = ids.filter((i) => isReroute[i]);
+			rerouteIds.sort((a, b) => (X[a] - X[b]) || ((layoutById.get(a).y || 0) - (layoutById.get(b).y || 0)));
+			for (const id of rerouteIds) {
+				const ref = [];
+				for (const t of rsuccs[id]) if (Y.has(t)) ref.push(Y.get(t) + sizes[t][1] / 2);
+				if (!ref.length) for (const p of rpreds[id]) if (Y.has(p)) ref.push(Y.get(p) + sizes[p][1] / 2);
+				const d = ref.length ? ref.reduce((s, v) => s + v, 0) / ref.length - sizes[id][1] / 2 : 0;
+				mark(id, resolveSingle(id, d));
+			}
+
+			// --- apply positions ---
+			for (const id of ids) {
+				const n = nodeById.get(id);
+				if (!n || X[id] === undefined || !Y.has(id)) continue;
+				n.pos[0] = X[id];
+				n.pos[1] = Y.get(id);
+			}
+
 			activeGraph.setDirtyCanvas(true, true);
 		})
 		.catch(console.error);
-
-	return;
-}
-
-
-/**
- * arrange nodes using WebCola layout
- * @see https://github.com/tgdwyer/WebCola
- * @see https://github.com/timelyportfolio/buildingwidgets/blob/gh-pages/content/post/2015-11-19-week46/index.Rmd
- * @see https://github.com/tgdwyer/WebCola/blob/master/src/layout.ts
- * @see https://github.com/tgdwyer/WebCola/wiki/Constraints
- * @returns {undefined} Nothing is returned.
- */
-async function colaLayout() {
-	const activeGraph = app.canvas.graph || app.graph;
-	popupInput(activeGraph); // see definition below
-
-	// convert litegraph to cola
-	const myColaNodes = activeGraph._nodes.map((n) => ({
-		"name": n.id.toString(),
-		"width": n.size[0],
-		"height": n.size[1],
-	}));
-	const nodesMap = myColaNodes.reduce((map, obj, id) => (map[obj.name] = id, map), {}); // find index from id
-	const myColaLinks = [...activeGraph.links.values()].filter(Boolean).map((e) => ({
-		"source": nodesMap[e.origin_id.toString()],
-		"target": nodesMap[e.target_id.toString()],
-	}));
-
-	// apply layout algorithm
-	const g_cola = new window.cola.Layout()
-		.avoidOverlaps(true)
-		.handleDisconnected(false)
-		.flowLayout("x", 3*app.extensionManager.setting.get(`${autonodes_id}.ranksep`))
-		.symmetricDiffLinkLengths(app.extensionManager.setting.get(`${autonodes_id}.nodesep`))
-		.nodes(myColaNodes)
-		.links(myColaLinks);
-	g_cola.start();
-	g_cola.updateNodePositions();
-
-	// retrieve nodes position
-	for (const n of activeGraph._nodes) {
-		const nodeLaidOut = g_cola.nodes().find((el) => el.name == n.id.toString());
-		n.pos[0] = nodeLaidOut.x;
-		n.pos[1] = nodeLaidOut.y;
-	}
-
-	activeGraph.setDirtyCanvas(true, true);
-
-	return;
-}
-
-
-/**
- * make a alert in case there’s any reroute node
- * also served as placeholder for any additional check in the future
- * @returns {undefined} Nothing is returned.
- */
-function popupInput(activeGraph) {
-	for (const n of activeGraph._nodes) {
-		if (n.type === "Reroute") {
-			app.extensionManager.toast.add({
-				severity: "warn",
-				summary: "Warning",
-				detail: "Layout algorithms work better without ReRoute nodes!\nbetter remove reroute before auto-layout then re-add after",
-			});
-			break;
-		}
-	}
-	return;
 }

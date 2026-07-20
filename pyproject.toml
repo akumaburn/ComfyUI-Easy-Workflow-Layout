@@ -1,17 +1,16 @@
 [project]
-name = "comfyui-auto-nodes-layout"
-description = "a ComfyUI extension that applies an improved node layout algorithm to ComfyUI workflows, primarily for better visualization"
-version = "0.0.3"
+name = "easy-workflow-layout"
+description = "a ComfyUI extension to organize workflow nodes into a clean, flowchart-like layout with same-type nodes aligned and connected nodes flowing left-to-right"
+version = "0.1.0"
 readme = "README.md"
 license = { file = "LICENSE" }
 classifiers = ["Operating System :: OS Independent"]
 
 [project.urls]
-Repository = "https://github.com/phineas-pta/comfyui-auto-nodes-layout"
-#  Used by Comfy Registry https://comfyregistry.org
+Repository = "https://github.com/aeslampanah/ComfyUI-Easy-Workflow-Layout"
 
 [tool.comfy]
-PublisherId = "phineas-pta"
-DisplayName = "comfyui-auto-nodes-layout"
+PublisherId = "aeslampanah"
+DisplayName = "Easy Workflow Layout"
 Icon = ""
 requires-comfyui = ">=0.12.3" 
