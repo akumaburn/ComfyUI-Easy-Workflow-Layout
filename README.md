@@ -4,9 +4,6 @@ a ComfyUI extension to organize workflow nodes into a clean, flowchart-like layo
 
 ## how to use
 
-> [!WARNING]
-> As per issue #8 changes to graph not visible until Undo + Redo. I struggle to reproduce this bug with my machine, if u have any additional information please share in #8
-
 **Installation**: via ComfyUI Manager for ease of use, or clone this repository manually using `git` if you’re developing (no additional requirements needed)
 
 **Using**:
@@ -41,7 +38,6 @@ why alignment matters:
 
 **TODO**
 - [ ] apply layout to only a subset of nodes instead of whole graph
-- [ ] find more layout algorithm, in JS preferably
 
 ## example
 
@@ -51,13 +47,4 @@ why alignment matters:
 - After (Easy Workflow Layout):
   ![After](./After.png)
 
-## extra
 
-other possible graph layout in JS (but unsatisfying to me nor suitable for DAG):
-- ELK: https://eclipse.dev/elk/reference/algorithms.html
-- WebCOLA: https://github.com/tgdwyer/WebCola
-- Cytoscape: https://blog.js.cytoscape.org/2020/05/11/layouts/#choice-of-layout
-  - AVSDF: https://github.com/iVis-at-Bilkent/avsdf-base
-  - CoSE: https://github.com/iVis-at-Bilkent/cose-base
-- Graphology: https://graphology.github.io/standard-library/layout.html
-- Springy: https://github.com/dhotson/springy
