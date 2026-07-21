@@ -28,8 +28,8 @@ It’s worth noting that since ComfyUI workflows are inherently oriented from le
 **Using**:
 1. Finalize your workflow (Reroute nodes are fine — they're grouped into a compact column automatically)
 2. Access the layout by either:
-   - Right-clicking on the canvas → **Layout Workflow**, or
-   - Navigating to the top menu bar: **Extensions > Easy Workflow Layout > Layout Workflow**
+   - Right-clicking on the canvas → **Easy Workflow Layout**, or
+   - Navigating to the top menu bar: **Extensions > Easy Workflow Layout > Easy Workflow Layout**
 3. Customize the spacing between columns and nodes by adjusting the settings in ComfyUI settings
 
 ## implementation details
@@ -38,7 +38,7 @@ the principle is to use ELK (Eclipse Layout Kernel) to compute pipeline stages (
 
 requirements: ComfyUI version ≥ 0.12.3
 
-implemented algorithm (**Layout Workflow**):
+implemented algorithm (**Easy Workflow Layout**):
 1. **ELK ‘layered’ layout** computes the column (pipeline stage) for every node — ELK's X placement already pulls inputs near their consumers, matching manual arrangement
 2. **Sinks are re-anchored** just right of whatever produces them (instead of all being dumped in the last column), so e.g. every `PreviewImage` sits right after its stage
 3. **Same-type lanes**: multi-instance types that each occupy their own column (chained like `FaceDetailer`, or siblings like `UltralyticsDetectorProvider`) are snapped to a shared horizontal lane, placed as a rigid group so they stay aligned
@@ -73,6 +73,12 @@ remove groups because nodes gonna be placed very differently
 
 - `Master layout` (ELK-based):
 ![Imgur](https://i.imgur.com/yNztWil.png)
+
+### before / after
+- Before (auto-arranged):
+  ![Before](./Before.png)
+- After (Easy Workflow Layout):
+  ![After](./After.png)
 
 ## extra
 

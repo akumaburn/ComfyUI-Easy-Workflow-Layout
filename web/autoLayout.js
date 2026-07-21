@@ -26,7 +26,7 @@ const ext_settings = [
 const ext_commands = [
 	{
 		"id": `${ext_id}.layout`,
-		"label": "Layout Workflow",
+		"label": "Easy Workflow Layout",
 		"function": masterLayout
 	},
 ];
@@ -51,11 +51,12 @@ app.registerExtension({
 	"menuCommands": ext_topbarmenu,
 	"settings": ext_settings,
 	getCanvasMenuItems(canvas) {
-		return [null, { content: "Layout Workflow", callback: masterLayout }];
+		return [null, { content: "Easy Workflow Layout", callback: masterLayout }];
 	},
 });
 
 const REROUTE_SIZE = 20;
+const TITLE_HEIGHT = 30; // height of the title bar on each node
 const COLGAP = 150;   // gap between a sink and its source column
 const COL_TOL = 150;  // x tolerance for grouping nodes into columns
 const GAP = 8;        // minimum gap used when resolving overlaps
@@ -277,7 +278,7 @@ async function masterLayout() {
 			const blockerAt = (id, y) => {
 				const [w, h] = sizes[id];
 				const x0 = X[id], x1 = x0 + w;
-				const y0 = y, y1 = y0 + h;
+				const y0 = y - TITLE_HEIGHT, y1 = y + h;
 				for (const p of placed) {
 					if (x0 < p.x1 && p.x0 < x1 && y0 < p.y1 && p.y0 < y1) return p;
 				}
@@ -289,7 +290,7 @@ async function masterLayout() {
 				for (let k = 0; k < 800; k++) {
 					const b = blockerAt(id, y);
 					if (!b) break;
-					y = b.y1;
+					y = b.y1 + TITLE_HEIGHT;
 				}
 				const down = y;
 				y = desired;
@@ -304,7 +305,7 @@ async function masterLayout() {
 			const mark = (id, y) => {
 				Y.set(id, y);
 				const [w, h] = sizes[id];
-				placed.push({ x0: X[id] - GAP, y0: y - GAP, x1: X[id] + w + GAP, y1: y + h + GAP, id });
+				placed.push({ x0: X[id] - GAP, y0: y - TITLE_HEIGHT - GAP, x1: X[id] + w + GAP, y1: y + h + GAP, id });
 			};
 			const placeFamily = (fam, baseY) => {
 				const mem = famMembers.get(fam);
@@ -316,7 +317,7 @@ async function masterLayout() {
 						if (b) { hit = b; break; }
 					}
 					if (!hit) break;
-					y = hit.y1;
+					y = hit.y1 + TITLE_HEIGHT;
 				}
 				for (const m of mem) mark(m, y);
 			};
@@ -413,7 +414,7 @@ async function masterLayout() {
 							if (b) { hit = b; break; }
 						}
 						if (!hit) break;
-						y = hit.y1;
+						y = hit.y1 + TITLE_HEIGHT;
 					}
 					for (const m of mem) mark(m, y);
 				} else {
