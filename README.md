@@ -2,22 +2,6 @@
 
 a ComfyUI extension to organize workflow nodes into a clean, flowchart-like layout with same-type nodes aligned and connected nodes flowing left-to-right
 
-this serves as a working prototype of the proof-of-concept detailed in Comfy-Org/ComfyUI#1547
-
-## description
-
-while ComfyUI includes a [1-click auto-arrange feature](https://github.com/pythongosssss/ComfyUI-Custom-Scripts#auto-arrange-graph) based on `LiteGraph.js`’s default `arrange()` method, which [organizes nodes by dependency levels](https://github.com/jagenjo/litegraph.js/issues/9#issuecomment-377317416), i find its wire orientation often leads to visual clutter
-
-for better visualization, my goal is to ensure all connections are clearly visible, indicating their direction, flow, and specific node attachments
-
-given my limited understanding, it appears most (if not all) ComfyUI workflows can be classified as [directed acyclic graphs](https://en.wikipedia.org/wiki/Directed_acyclic_graph); this suggests that more advanced [graph drawing algorithms](https://en.wikipedia.org/wiki/Graph_drawing) could be applied; specifically, i’m focusing on [hierarchical graph drawing](https://en.wikipedia.org/wiki/Layered_graph_drawing), which seems particularly well-suited for directed acyclic graphs.
-
-**credit**: this approach was inspired by this [comment](https://github.com/jagenjo/litegraph.js/issues/9#issuecomment-376413726)
-
-**disclaimer**: this reflects a personal preference
-
-It’s worth noting that since ComfyUI workflows are inherently oriented from left to right, the concept of ‘depth’ is more accurately described as a ‘column’ or ‘rank’ within this hierarchical context.
-
 ## how to use
 
 > [!WARNING]
@@ -44,6 +28,7 @@ implemented algorithm (**Easy Workflow Layout**):
 3. **Same-type lanes**: multi-instance types that each occupy their own column (chained like `FaceDetailer`, or siblings like `UltralyticsDetectorProvider`) are snapped to a shared horizontal lane, placed as a rigid group so they stay aligned
 4. **Remaining nodes** are placed near their connected neighbors, then nudged up/down until nothing overlaps (node dimensions are fully accounted for — no overlaps, guaranteed)
 5. **Reroute nodes** are gathered into a compact vertical column at their fan-out point instead of being scattered by the layout engine
+6. **Column consolidation**: nodes with a single predecessor in the adjacent column are merged into that column, eliminating unnecessary pipeline stages
 
 2 options to control layout density:
 - horizontal spacing between columns (`ranksep`)
@@ -59,20 +44,6 @@ why alignment matters:
 - [ ] find more layout algorithm, in JS preferably
 
 ## example
-
-using [noisy latent composition example](https://comfyanonymous.github.io/ComfyUI_examples/noisy_latent_composition/)
-
-(the empty black rectangle box is browser viewport)
-
-- original workflow:
-![Imgur](https://i.imgur.com/jqa3SoD.png)
-remove groups because nodes gonna be placed very differently
-
-- `LiteGraph.js` default auto-arrange:
-![Imgur](https://i.imgur.com/3hTAdDU.png)
-
-- `Master layout` (ELK-based):
-![Imgur](https://i.imgur.com/yNztWil.png)
 
 ### before / after
 - Before (auto-arranged):
