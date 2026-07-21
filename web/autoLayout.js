@@ -58,7 +58,7 @@ app.registerExtension({
 const REROUTE_SIZE = 20;
 const COLGAP = 150;   // gap between a sink and its source column
 const COL_TOL = 150;  // x tolerance for grouping nodes into columns
-const GAP = 4;        // minimum gap used when resolving overlaps
+const GAP = 8;        // minimum gap used when resolving overlaps
 
 function median(arr) {
 	if (!arr.length) return null;
@@ -277,8 +277,9 @@ async function masterLayout() {
 			const blockerAt = (id, y) => {
 				const [w, h] = sizes[id];
 				const x0 = X[id], x1 = x0 + w;
+				const y0 = y, y1 = y0 + h;
 				for (const p of placed) {
-					if (x0 < p.x1 && p.x0 < x1 && y < p.y1 && p.y0 < y + h) return p;
+					if (x0 < p.x1 && p.x0 < x1 && y0 < p.y1 && p.y0 < y1) return p;
 				}
 				return null;
 			};
@@ -288,14 +289,14 @@ async function masterLayout() {
 				for (let k = 0; k < 800; k++) {
 					const b = blockerAt(id, y);
 					if (!b) break;
-					y = b.y1 + GAP;
+					y = b.y1;
 				}
 				const down = y;
 				y = desired;
 				for (let k = 0; k < 800; k++) {
 					const b = blockerAt(id, y);
 					if (!b) break;
-					y = b.y0 - h - GAP;
+					y = b.y0 - h;
 				}
 				const up = y;
 				return Math.abs(down - desired) <= Math.abs(desired - up) ? down : up;
@@ -303,7 +304,7 @@ async function masterLayout() {
 			const mark = (id, y) => {
 				Y.set(id, y);
 				const [w, h] = sizes[id];
-				placed.push({ x0: X[id], y0: y, x1: X[id] + w, y1: y + h, id });
+				placed.push({ x0: X[id] - GAP, y0: y - GAP, x1: X[id] + w + GAP, y1: y + h + GAP, id });
 			};
 			const placeFamily = (fam, baseY) => {
 				const mem = famMembers.get(fam);
@@ -315,7 +316,7 @@ async function masterLayout() {
 						if (b) { hit = b; break; }
 					}
 					if (!hit) break;
-					y = hit.y1 + GAP;
+					y = hit.y1;
 				}
 				for (const m of mem) mark(m, y);
 			};
@@ -412,7 +413,7 @@ async function masterLayout() {
 							if (b) { hit = b; break; }
 						}
 						if (!hit) break;
-						y = hit.y1 + GAP;
+						y = hit.y1;
 					}
 					for (const m of mem) mark(m, y);
 				} else {
