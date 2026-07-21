@@ -341,12 +341,12 @@ async function masterLayout() {
 								if (Y.has(u) && !memSet.has(u)) cents.push(Y.get(u) + sizes[u][1] / 2);
 							}
 						}
+						const maxh = Math.max(...mem.map((m) => sizes[m][1]));
 						let baseY;
 						if (!cents.length) {
 							if (sweep < 3) { still.push(id); continue; }
 							baseY = 0;
 						} else {
-							const maxh = Math.max(...mem.map((m) => sizes[m][1]));
 							baseY = median(cents) - maxh / 2;
 						}
 						placeFamily(fam, baseY);
