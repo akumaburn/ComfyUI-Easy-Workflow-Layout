@@ -36,3 +36,6 @@ cython_debug/
 
 # PyCharm
 .idea/
+
+# Comfy CLI publish artifact
+node.zip

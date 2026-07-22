@@ -4,11 +4,13 @@ A ComfyUI extension that organizes workflow nodes into a clean, flowchart-like l
 
 ## Installation
 
-Install via **ComfyUI Manager**, or clone the repository manually (no additional dependencies required):
+| Method | Command |
+|--------|---------|
+| **ComfyUI Manager** | Search for "Easy Workflow Layout" in the Manager |
+| **Comfy Registry**  | `comfy node install easy-workflow-layout` |
+| **Manual**          | `git clone https://github.com/aeslampanah/ComfyUI-Easy-Workflow-Layout.git` |
 
-```
-git clone https://github.com/aeslampanah/ComfyUI-Easy-Workflow-Layout.git
-```
+No additional Python dependencies required.
 
 ## Usage
 

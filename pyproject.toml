@@ -7,10 +7,10 @@ license = { file = "LICENSE" }
 classifiers = ["Operating System :: OS Independent"]
 
 [project.urls]
-Repository = "https://github.com/aeslampanah/ComfyUI-Easy-Workflow-Layout"
+Repository = "https://github.com/akumaburn/ComfyUI-Easy-Workflow-Layout"
 
 [tool.comfy]
-PublisherId = "aeslampanah"
+PublisherId = "akumaburn"
 DisplayName = "Easy Workflow Layout"
 Icon = ""
 requires-comfyui = ">=0.12.3" 
